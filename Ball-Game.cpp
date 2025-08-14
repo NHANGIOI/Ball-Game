@@ -5,6 +5,8 @@
 #define se second
 #define pff pair<float,float>
 using Vecf = sf::Vector2f;
+
+const int N = 100;
 sf::Font Consolas;
 
 namespace draw{
@@ -45,6 +47,18 @@ sf::Text text(std::string x,Vecf pos,const sf::Font &font,float sz,sf::Color Col
     return res;
 }
 }
+struct show{
+void interative(std::optional<sf::Event> *event){
+
+}
+void draw(sf::RenderWindow &windows){
+
+}
+};
+show screen[N];
+int par[N];
+std::vector<int> child[N];
+
 unsigned int n = 800,m = 600;
 void pre_process(){
     if(Consolas.openFromFile("Fonts/Consolas-Regular.ttf") == false){
@@ -78,10 +92,12 @@ signed main()
                     view.setViewport(sf::FloatRect({0.f,(1.f - scale) / 2.f},{1.f,scale}));
                 }
             }
+
         }
         windows.clear(sf::Color::Black);
         windows.setView(view);
 
+        
         windows.display();
     }
 }
