@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(SFML_DIR "D:/COMPILER/SFML-3.0.0/lib/cmake/SFML")
 find_package(SFML 3.0 COMPONENTS System Window Graphics Audio REQUIRED)
 
-# --- ĐIỂM QUAN TRỌNG: xuất exe vào thư mục nguồn/Ball-Game ---
+# --- ĐIỂM QUAN TRỌNG: xuất exe vào thư mục nguồn ---
 set(EXE_OUTPUT_DIR "${CMAKE_SOURCE_DIR}")
 
 # Đặt cho cả single-config và multi-config (Debug/Release)
@@ -15,7 +15,11 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${EXE_OUTPUT_DIR})
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${EXE_OUTPUT_DIR})
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${EXE_OUTPUT_DIR})
 
-add_executable(Ball-Game Ball-Game.cpp)
+add_executable(Ball-Game 
+    Ball-Game.cpp
+    EquationSolver.cpp
+    Vector2DCalc.cpp
+)
 
 target_link_libraries(Ball-Game PRIVATE SFML::System SFML::Window SFML::Graphics SFML::Audio)
 target_include_directories(Ball-Game PRIVATE ${SFML_INCLUDE_DIRS})
