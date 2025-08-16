@@ -1,6 +1,8 @@
 #include <iostream>
 #include <cmath>
 #include <vector>
+#include <chrono>
+#include <random>
 #include <SFML/Graphics.hpp>
 #include "EquationSolver.hpp"
 #include "Vector2DCalc.hpp"
@@ -8,11 +10,16 @@
 #define fi first
 #define se second
 #define pff pair<float,float>
+#define ll long long
 using Vecf = sf::Vector2f;
-
+std::mt19937 rng(std::chrono::steady_clock::now().time_since_epoch().count());
+ll rnd(ll l,ll r){
+    return l + rng() % (r - l + 1);
+}
 const float INF = 1e9 + 7;
 const int N = 100;
 sf::Font Consolas;
+
 namespace draw{
 sf::RectangleShape reg(Vecf A,Vecf B,sf::Color Color_code){
     sf::RectangleShape res;
@@ -51,7 +58,20 @@ sf::Text text(std::string x,Vecf pos,const sf::Font &font,float sz,sf::Color Col
     return res;
 }
 }
-
+struct Picture{
+    sf::Texture pic;
+    void Load(std::string file_target,bool smooth_ok){
+        if(pic.loadFromFile(file_target) == false){
+            throw std::runtime_error("Cannot Load file main_menu_background");
+        }
+        pic.setSmooth(smooth_ok);
+    }
+    sf::Sprite draw(Vecf pos){
+        sf::Sprite sp(pic);
+        sp.setPosition(pos);
+        return sp;
+    }
+};
 struct pt_doan_t{
     Vecf A,B;
     float a,b,c;
@@ -90,6 +110,7 @@ struct Ball{
     float R;
     Vecf u;
     std::vector<pt_doan_t> lines;
+    sf::Color Color_code;
     private:
         void dieu_chinh_u(int id){
             Vecf n = sf::Vector2f(lines[id].B.y - lines[id].A.y, lines[id].A.x - lines[id].B.x);
@@ -106,25 +127,138 @@ struct Ball{
         }
     public:
         void main_process(sf::RenderWindow &windows){
-            windows.draw(draw::Circle(Vecf(x,y),R,3000,sf::Color::Red));
+            windows.draw(draw::Circle(Vecf(x,y),R,3000,Color_code));
             reflex();
             //std::cout << "BALL : " << x << " " << y << " : " << u.x << " " << u.y << std::endl;
-            std::cout << len(u) << std::endl;
+            //std::cout << len(u) << std::endl;
             x += u.x;
             y += u.y;
         }
 };
-
+//---------------------------//
 unsigned int n = 800,m = 600;
 int limit_frame = 60;
+namespace main_menu{
+    Picture pic_main_menu;
+    Ball menu_ball[5];
+
+    sf::Texture tx_single_button;
+    sf::Texture tx_duel_button;
+    sf::Texture tx_setting_button;
+
+    void pre_process(){
+        pic_main_menu.Load("Texture/main_menu_background.jpg",true);
+        if(tx_single_button.loadFromFile("Texture/Khung_Single_Button.png") == false){//nạp ảnh khung single button
+            throw std::runtime_error("Cannot Load file Khung_Single_Button");
+        }
+        tx_single_button.setSmooth(true);
+
+        if(tx_duel_button.loadFromFile("Texture/Khung_Duel_Button.png") == false){//nạp ảnh khung duel button
+            throw std::runtime_error("Cannot Load file Khung_Duel_Button");
+        }
+        tx_duel_button.setSmooth(true);
+
+        if(tx_setting_button.loadFromFile("Texture/Khung_Setting_Button.png") == false){//nạp ảnh khung Setting button
+            throw std::runtime_error("Cannot Load file Khung_Setting_Button");
+        }
+        tx_setting_button.setSmooth(true);
+
+        //pre_process menu_ball
+        for(int i = 0;i < 5;++i){
+            menu_ball[i].x = rnd(0.f,(float)n);
+            menu_ball[i].y = rnd(0.f,(float)m);
+            menu_ball[i].R = rnd(10,20);
+            menu_ball[i].u = Vecf((float)(rnd(0,1) == 1 ? 1 : -1) * rnd(200,300),(float)(rnd(0,1) == 1 ? 1 : -1) * rnd(200,300)) / limit_frame;
+            menu_ball[i].Color_code = sf::Color(rnd(200,255),rnd(10,255),rnd(20,255));
+            
+            pt_doan_t tmp;
+
+            tmp.A = Vecf((float)n,0.0);
+            tmp.B = Vecf(0.0,0.0);
+            tmp.cre();
+            menu_ball[i].lines.push_back(tmp);
+
+            tmp.A = Vecf((float)n,0.0);
+            tmp.B = Vecf((float)n,(float)m);
+            tmp.cre();
+            menu_ball[i].lines.push_back(tmp);
+
+            tmp.A = Vecf(0.0,(float)m);
+            tmp.B = Vecf((float)n,(float)m);
+            tmp.cre();
+            menu_ball[i].lines.push_back(tmp);
+        
+            tmp.A = Vecf(0.0,(float)m);
+            tmp.B = Vecf(0.0,0.0);
+            tmp.cre();
+            menu_ball[i].lines.push_back(tmp);
+            //--------------------------------//
+        }
+    }
+
+    void draw_single_button(float mx,float my,sf::RenderWindow &windows){
+        sf::Sprite button(tx_single_button);
+        button.scale(Vecf(0.1138245033f,0.095087163f));
+        button.setPosition(Vecf(262.5f,290));
+        windows.draw(button);
+
+        sf::Text docu(Consolas);
+        docu.setString("Single Play");
+        docu.setCharacterSize(35);
+        docu.setFillColor(sf::Color::Red);
+        docu.setPosition(Vecf(295,295));
+        windows.draw(docu);
+    }
+    void draw_duel_button(float mx,float my,sf::RenderWindow &windows){
+        sf::Sprite button(tx_duel_button);
+        button.scale(Vecf(0.1135425268f,0.095087163f));
+        button.setPosition(Vecf(262.5f,390));
+        windows.draw(button);
+
+        sf::Text docu(Consolas);
+        docu.setString("Duel Play");
+        docu.setCharacterSize(35);
+        docu.setFillColor(sf::Color::Red);
+        docu.setPosition(Vecf(315,396));
+        windows.draw(docu);
+    }
+    void draw_setting_button(float mx,float my,sf::RenderWindow &windows){
+        sf::Sprite button(tx_setting_button);
+        button.scale(Vecf(0.11377741f,0.094488188f));
+        button.setPosition(Vecf(262.5f,490));
+        windows.draw(button);
+
+        sf::Text docu(Consolas);
+        docu.setString("Setting");
+        docu.setCharacterSize(35);
+        docu.setFillColor(sf::Color::Red);
+        docu.setPosition(Vecf(333,495));
+        windows.draw(docu);
+    }
+    void main_process(sf::RenderWindow &windows){
+        windows.draw(pic_main_menu.draw(Vecf(0.f,0.f)));
+        for(int i = 0;i < 5;++i){
+            menu_ball[i].main_process(windows);
+        }
+        float mx = sf::Mouse::getPosition(windows).x;
+        float my = sf::Mouse::getPosition(windows).y;
+        //windows.draw(draw::reg(Vecf(262.5f,290),Vecf(537.5f,350),sf::Color::Red));
+        //windows.draw(draw::reg(Vecf(262.5f,390),Vecf(537.5f,450),sf::Color::White));
+        //windows.draw(draw::reg(Vecf(262.5f,490),Vecf(537.5f,550),sf::Color::Blue));
+
+        draw_single_button(mx,my,windows);
+        draw_duel_button(mx,my,windows);
+        draw_setting_button(mx,my,windows);
+    }
+}
 void pre_process(){
     if(Consolas.openFromFile("Fonts/Consolas-Regular.ttf") == false){
         exit(-1);
     }
+    main_menu::pre_process();
 }
 signed main()
 {
-    pre_process();
     sf::RenderWindow windows(sf::VideoMode({n, m}), "Ball-Game");
     windows.setFramerateLimit(limit_frame);
 
@@ -133,35 +267,11 @@ signed main()
     view.setCenter({n / 2.f,m / 2.f});
     windows.setView(view);
 
-    Ball bong;
-    bong.x = 100.f;
-    bong.y = 100.f;
-    bong.u = Vecf(125.f,155.f) / limit_frame;//chuẩn hóa
-    bong.R = 10;
-
-    pt_doan_t tmp;
-    tmp.A = sf::Vector2f(0.0,0.f);
-    tmp.B = sf::Vector2f(800.f,0.f);
-    tmp.cre();
-    bong.lines.push_back(tmp);
-
-    tmp.A = sf::Vector2f(800.f,0.f);
-    tmp.B = sf::Vector2f(800.f,600.f);
-    tmp.cre();
-    bong.lines.push_back(tmp);
-
-    tmp.A = sf::Vector2f(0.f,600.f);
-    tmp.B = sf::Vector2f(800.f,600.f);
-    tmp.cre();
-    bong.lines.push_back(tmp);
-
-    tmp.A = sf::Vector2f(0.f,600.f);
-    tmp.B = sf::Vector2f(0.f,0.f);
-    tmp.cre();
-    bong.lines.push_back(tmp);
-
+    pre_process();
+    
     while (windows.isOpen())
-    {
+    {   
+        
         while (const std::optional event = windows.pollEvent())
         {
             if (event->is<sf::Event::Closed>()){
@@ -179,18 +289,18 @@ signed main()
                     view.setViewport(sf::FloatRect({0.f,(1.f - scale) / 2.f},{1.f,scale}));
                 }
             }
-            if(sf::Mouse::isButtonPressed(sf::Mouse::Button::Left) == true){
-                float Mx = sf::Mouse::getPosition(windows).x;
-                float My = sf::Mouse::getPosition(windows).y;
+            if(auto* mousePressed = event->getIf<sf::Event::MouseButtonPressed>()){
+                float Mx = mousePressed->position.x;
+                float My = mousePressed->position.y;
                 std::cout << Mx << " " << My << std::endl;
             }
 
         }
         windows.clear(sf::Color::Black);
         windows.setView(view);
-        
-        bong.main_process(windows);
-        
+
+        main_menu::main_process(windows);
+
         windows.display();
     }
 }
