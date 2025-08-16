@@ -138,6 +138,7 @@ struct Ball{
 //---------------------------//
 unsigned int n = 800,m = 600;
 int limit_frame = 60;
+sf::View view;
 namespace main_menu{
     Picture pic_main_menu;
     Ball menu_ball[5];
@@ -195,7 +196,10 @@ namespace main_menu{
             //--------------------------------//
         }
     }
-
+    bool limit_single_button(float mx,float my){
+        if(mx < 280 || mx > 520 || my < 295 || my > 345)    return false;
+        return true;
+    }
     void draw_single_button(float mx,float my,sf::RenderWindow &windows){
         sf::Sprite button(tx_single_button);
         button.scale(Vecf(0.1138245033f,0.095087163f));
@@ -205,9 +209,13 @@ namespace main_menu{
         sf::Text docu(Consolas);
         docu.setString("Single Play");
         docu.setCharacterSize(35);
-        docu.setFillColor(sf::Color::Red);
+        docu.setFillColor((limit_single_button(mx,my) ? sf::Color(0,128,0) : sf::Color::Red));
         docu.setPosition(Vecf(295,295));
         windows.draw(docu);
+    }
+    bool limit_duel_button(float mx,float my){
+        if(mx < 280 || mx > 520 || my < 395 || my > 445)    return false;
+        return true;
     }
     void draw_duel_button(float mx,float my,sf::RenderWindow &windows){
         sf::Sprite button(tx_duel_button);
@@ -218,9 +226,13 @@ namespace main_menu{
         sf::Text docu(Consolas);
         docu.setString("Duel Play");
         docu.setCharacterSize(35);
-        docu.setFillColor(sf::Color::Red);
+        docu.setFillColor((limit_duel_button(mx,my) ? sf::Color(0,128,0) : sf::Color::Blue));
         docu.setPosition(Vecf(315,396));
         windows.draw(docu);
+    }
+    bool limit_setting_button(float mx,float my){
+        if(mx < 280 || mx > 520 || my < 495 || my > 540)    return false;
+        return true;
     }
     void draw_setting_button(float mx,float my,sf::RenderWindow &windows){
         sf::Sprite button(tx_setting_button);
@@ -231,21 +243,20 @@ namespace main_menu{
         sf::Text docu(Consolas);
         docu.setString("Setting");
         docu.setCharacterSize(35);
-        docu.setFillColor(sf::Color::Red);
+        docu.setFillColor((limit_setting_button(mx,my) ? sf::Color(0,128,0) : sf::Color::White));
         docu.setPosition(Vecf(333,495));
         windows.draw(docu);
     }
     void main_process(sf::RenderWindow &windows){
         windows.draw(pic_main_menu.draw(Vecf(0.f,0.f)));
+
+        windows.draw(draw::text("Ball Game",Vecf(215,100),Consolas,75,sf::Color(103, 199, 99),""));
         for(int i = 0;i < 5;++i){
             menu_ball[i].main_process(windows);
         }
-        float mx = sf::Mouse::getPosition(windows).x;
-        float my = sf::Mouse::getPosition(windows).y;
-        //windows.draw(draw::reg(Vecf(262.5f,290),Vecf(537.5f,350),sf::Color::Red));
-        //windows.draw(draw::reg(Vecf(262.5f,390),Vecf(537.5f,450),sf::Color::White));
-        //windows.draw(draw::reg(Vecf(262.5f,490),Vecf(537.5f,550),sf::Color::Blue));
-
+        Vecf rpos = windows.mapPixelToCoords(sf::Mouse::getPosition(windows),view);
+        float mx = rpos.x;
+        float my = rpos.y; 
         draw_single_button(mx,my,windows);
         draw_duel_button(mx,my,windows);
         draw_setting_button(mx,my,windows);
@@ -262,7 +273,6 @@ signed main()
     sf::RenderWindow windows(sf::VideoMode({n, m}), "Ball-Game");
     windows.setFramerateLimit(limit_frame);
 
-    sf::View view;
     view.setSize(sf::Vector2f(n,m));
     view.setCenter({n / 2.f,m / 2.f});
     windows.setView(view);
@@ -292,6 +302,9 @@ signed main()
             if(auto* mousePressed = event->getIf<sf::Event::MouseButtonPressed>()){
                 float Mx = mousePressed->position.x;
                 float My = mousePressed->position.y;
+                Vecf rpos = windows.mapPixelToCoords(sf::Mouse::getPosition(windows),view);
+                float mx = rpos.x;
+                float my = rpos.y; 
                 std::cout << Mx << " " << My << std::endl;
             }
 
