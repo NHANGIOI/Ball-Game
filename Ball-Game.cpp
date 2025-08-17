@@ -18,7 +18,7 @@ ll rnd(ll l,ll r){
 }
 const float INF = 1e9 + 7;
 const int N = 100;
-sf::Font Consolas;
+sf::Font Consolas, Agencyfb;
 
 namespace draw{
 sf::RectangleShape reg(Vecf A,Vecf B,sf::Color Color_code){
@@ -126,7 +126,7 @@ struct Ball{
             }
         }
     public:
-        void main_process(sf::RenderWindow &windows){
+        void process(sf::RenderWindow &windows){
             windows.draw(draw::Circle(Vecf(x,y),R,3000,Color_code));
             reflex();
             //std::cout << "BALL : " << x << " " << y << " : " << u.x << " " << u.y << std::endl;
@@ -139,6 +139,8 @@ struct Ball{
 unsigned int n = 800,m = 600;
 int limit_frame = 60;
 sf::View view;
+int id_screen = 1;
+int par[N];
 namespace main_menu{
     Picture pic_main_menu;
     Ball menu_ball[5];
@@ -247,26 +249,82 @@ namespace main_menu{
         docu.setPosition(Vecf(333,495));
         windows.draw(docu);
     }
-    void main_process(sf::RenderWindow &windows){
+    void process(sf::RenderWindow &windows){
         windows.draw(pic_main_menu.draw(Vecf(0.f,0.f)));
 
-        windows.draw(draw::text("Ball Game",Vecf(215,100),Consolas,75,sf::Color(103, 199, 99),""));
+        if(id_screen == 1)    windows.draw(draw::text("Ball Game",Vecf(215,100),Consolas,75,sf::Color(103, 199, 99),""));
         for(int i = 0;i < 5;++i){
-            menu_ball[i].main_process(windows);
+            menu_ball[i].process(windows);
         }
         Vecf rpos = windows.mapPixelToCoords(sf::Mouse::getPosition(windows),view);
         float mx = rpos.x;
         float my = rpos.y; 
-        draw_single_button(mx,my,windows);
-        draw_duel_button(mx,my,windows);
-        draw_setting_button(mx,my,windows);
+        if(id_screen == 1)    draw_single_button(mx,my,windows);
+        if(id_screen == 1)    draw_duel_button(mx,my,windows);
+        if(id_screen == 1)    draw_setting_button(mx,my,windows);
+    }
+}
+namespace setting{
+    sf::Texture tx_khung_setting;
+    sf::Texture tx_Nut_Exit1;
+    sf::Texture tx_Nut_Exit2;
+    void pre_process(){
+        if(tx_khung_setting.loadFromFile("Texture/Setting/Khung_setting.png") == false){
+            throw std::runtime_error("Cannot Load file Khung_setting");
+        }
+        tx_khung_setting.setSmooth(true);
+        if(tx_Nut_Exit1.loadFromFile("Texture/Setting/Nut_Exit1.png") == false){
+            throw std::runtime_error("Cannot Load file Nut_Exit1");
+        }
+        tx_Nut_Exit1.setSmooth(true);
+        if(tx_Nut_Exit2.loadFromFile("Texture/Setting/Nut_Exit2.png") == false){
+            throw std::runtime_error("Cannot Load file Nut_Exit2");
+        }
+        tx_Nut_Exit2.setSmooth(true);
+    }
+    bool limit_Nut_Exit(float mx,float my){
+        if(mx < 615.f || mx > 660.f || my < 110.f || my > 155.f)    return false;
+        return true;
+    }
+    void process(sf::RenderWindow &windows){
+        sf::RectangleShape overlay;
+        overlay.setSize(Vecf(n,m));
+        overlay.setFillColor(sf::Color(0,0,0,128));
+        windows.draw(overlay);
+
+        //windows.draw(draw::reg(Vecf(125,93.75f),Vecf(675,506.25f),sf::Color::Red));
+        sf::Sprite khung_setting(tx_khung_setting);
+        khung_setting.setPosition(Vecf(125,93.75f));
+        khung_setting.scale(Vecf(0.7189542484f,0.7161458333f));
+        windows.draw(khung_setting);
+
+        //615 110
+        //660 155
+        //sz : 45
+        Vecf rpos = windows.mapPixelToCoords(sf::Mouse::getPosition(windows),view);
+        float mx = rpos.x;
+        float my = rpos.y;
+
+        sf::Sprite Nut_Exit(tx_Nut_Exit1);
+        if(limit_Nut_Exit(mx,my) == true)   Nut_Exit.setTexture(tx_Nut_Exit2);
+        Nut_Exit.setPosition(Vecf(615,110));
+        Nut_Exit.scale(Vecf(0.703125f,0.703125f));
+        windows.draw(Nut_Exit);
+
     }
 }
 void pre_process(){
     if(Consolas.openFromFile("Fonts/Consolas-Regular.ttf") == false){
         exit(-1);
     }
+    if(Agencyfb.openFromFile("Fonts/Agencyfb_bold.ttf") == false){
+        exit(-1);
+    }
     main_menu::pre_process();
+    setting::pre_process();
+
+    //thiết lập screen cha của id
+    par[2] = 1;
 }
 signed main()
 {
@@ -300,19 +358,33 @@ signed main()
                 }
             }
             if(auto* mousePressed = event->getIf<sf::Event::MouseButtonPressed>()){
-                float Mx = mousePressed->position.x;
-                float My = mousePressed->position.y;
-                Vecf rpos = windows.mapPixelToCoords(sf::Mouse::getPosition(windows),view);
+                sf::Vector2i ppos = sf::Vector2i(mousePressed->position.x,mousePressed->position.y);
+                Vecf rpos = windows.mapPixelToCoords(ppos,view);
                 float mx = rpos.x;
                 float my = rpos.y; 
-                std::cout << Mx << " " << My << std::endl;
+                std::cout << mx << " " << my << std::endl;
+
+                if(id_screen == 1){
+                    if(main_menu::limit_setting_button(mx,my) == true){
+                        id_screen = 2;
+                    }
+                }
+                else if(id_screen == 2){
+                    if(setting::limit_Nut_Exit(mx,my) == true){
+                        id_screen = par[id_screen];
+                    }
+                }
             }
 
         }
         windows.clear(sf::Color::Black);
         windows.setView(view);
-
-        main_menu::main_process(windows);
+        
+        if(id_screen == 1) main_menu::process(windows);
+        else if(id_screen == 2){
+            main_menu::process(windows);
+            setting::process(windows);
+        }
 
         windows.display();
     }
