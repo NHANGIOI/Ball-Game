@@ -19,7 +19,7 @@ ll rnd(ll l,ll r){
 const float INF = 1e9 + 7;
 const int N = 100;
 sf::Font Consolas, Agencyfb;
-
+sf::Clock program_time;
 namespace draw{
 sf::RectangleShape reg(Vecf A,Vecf B,sf::Color Color_code){
     sf::RectangleShape res;
@@ -112,6 +112,8 @@ struct Ball{
     std::vector<pt_doan_t> lines;
     sf::Color Color_code;
     private:
+        bool ok = false;
+        sf::Time pret; // độ lệch thời gian so với thời điểm trc đó
         void dieu_chinh_u(int id){
             Vecf n = sf::Vector2f(lines[id].B.y - lines[id].A.y, lines[id].A.x - lines[id].B.x);
             n = n / (float)len(n);
@@ -128,19 +130,33 @@ struct Ball{
     public:
         void process(sf::RenderWindow &windows){
             windows.draw(draw::Circle(Vecf(x,y),R,3000,Color_code));
-            reflex();
+            if(ok == false){
+                pret = program_time.getElapsedTime();
+                ok = true;
+            }
+            else{
+                reflex();
+                x += (float)((double)u.x * (double)(program_time.getElapsedTime() - pret).asMilliseconds() / 1000.0);  
+                y += (float)((double)u.y * (double)(program_time.getElapsedTime() - pret).asMilliseconds() / 1000.0);
+                pret = program_time.getElapsedTime();
+            }
+            
             //std::cout << "BALL : " << x << " " << y << " : " << u.x << " " << u.y << std::endl;
             //std::cout << len(u) << std::endl;
-            x += u.x;
-            y += u.y;
+
         }
+};
+struct Player{
+    std::string name;
 };
 //---------------------------//
 unsigned int n = 800,m = 600;
-int limit_frame = 60;
+int fps_limit = 60;
 sf::View view;
 int id_screen = 1;
 int par[N];
+Player player1,player2;
+
 namespace main_menu{
     Picture pic_main_menu;
     Ball menu_ball[5];
@@ -165,13 +181,13 @@ namespace main_menu{
             throw std::runtime_error("Cannot Load file Khung_Setting_Button");
         }
         tx_setting_button.setSmooth(true);
-
+        
         //pre_process menu_ball
         for(int i = 0;i < 5;++i){
             menu_ball[i].x = rnd(0.f,(float)n);
             menu_ball[i].y = rnd(0.f,(float)m);
             menu_ball[i].R = rnd(10,20);
-            menu_ball[i].u = Vecf((float)(rnd(0,1) == 1 ? 1 : -1) * rnd(200,300),(float)(rnd(0,1) == 1 ? 1 : -1) * rnd(200,300)) / limit_frame;
+            menu_ball[i].u = Vecf((float)(rnd(0,1) == 1 ? 1 : -1) * rnd(100,200),(float)(rnd(0,1) == 1 ? 1 : -1) * rnd(100,200));
             menu_ball[i].Color_code = sf::Color(rnd(200,255),rnd(10,255),rnd(20,255));
             
             pt_doan_t tmp;
@@ -259,32 +275,110 @@ namespace main_menu{
         Vecf rpos = windows.mapPixelToCoords(sf::Mouse::getPosition(windows),view);
         float mx = rpos.x;
         float my = rpos.y; 
-        if(id_screen == 1)    draw_single_button(mx,my,windows);
-        if(id_screen == 1)    draw_duel_button(mx,my,windows);
-        if(id_screen == 1)    draw_setting_button(mx,my,windows);
+        if(id_screen == 1){
+            if(limit_single_button(mx,my) || limit_duel_button(mx,my) || limit_setting_button(mx,my)){
+                windows.setMouseCursor(sf::Cursor(sf::Cursor::Type::Hand));
+            }
+            else{
+                windows.setMouseCursor(sf::Cursor(sf::Cursor::Type::Arrow));
+            }
+            draw_single_button(mx,my,windows);
+            draw_duel_button(mx,my,windows);
+            draw_setting_button(mx,my,windows);
+        }
     }
 }
 namespace setting{
     sf::Texture tx_khung_setting;
-    sf::Texture tx_Nut_Exit1;
-    sf::Texture tx_Nut_Exit2;
+    sf::Texture tx_Nut_Exit1, tx_Nut_Exit2;
+    sf::Texture tx_khung_so_fps1, tx_khung_so_fps2;
+    sf::Texture tx_khung_auto_fps1, tx_khung_auto_fps2;
     void pre_process(){
-        if(tx_khung_setting.loadFromFile("Texture/Setting/Khung_setting.png") == false){
-            throw std::runtime_error("Cannot Load file Khung_setting");
-        }
+        if(tx_khung_setting.loadFromFile("Texture/Setting/Khung_setting.png") == false)     exit(-1);
+        if(tx_Nut_Exit1.loadFromFile("Texture/Setting/Nut_Exit1.png") == false)     exit(-1);
+        if(tx_Nut_Exit2.loadFromFile("Texture/Setting/Nut_Exit2.png") == false)     exit(-1);
+        if(tx_khung_so_fps1.loadFromFile("Texture/Setting/Khung_so_fps1.png") == false)     exit(-1);
+        if(tx_khung_so_fps2.loadFromFile("Texture/Setting/Khung_so_fps2.png") == false)     exit(-1);
+        if(tx_khung_auto_fps1.loadFromFile("Texture/Setting/Khung_auto_fps1.png") == false)     exit(-1);
+        if(tx_khung_auto_fps2.loadFromFile("Texture/Setting/Khung_auto_fps2.png") == false)     exit(-1);
         tx_khung_setting.setSmooth(true);
-        if(tx_Nut_Exit1.loadFromFile("Texture/Setting/Nut_Exit1.png") == false){
-            throw std::runtime_error("Cannot Load file Nut_Exit1");
-        }
         tx_Nut_Exit1.setSmooth(true);
-        if(tx_Nut_Exit2.loadFromFile("Texture/Setting/Nut_Exit2.png") == false){
-            throw std::runtime_error("Cannot Load file Nut_Exit2");
-        }
         tx_Nut_Exit2.setSmooth(true);
+        tx_khung_so_fps1.setSmooth(true);
+        tx_khung_so_fps2.setSmooth(true);
+        tx_khung_auto_fps1.setSmooth(true);
+        tx_khung_auto_fps2.setSmooth(true);
     }
     bool limit_Nut_Exit(float mx,float my){
         if(mx < 615.f || mx > 660.f || my < 110.f || my > 155.f)    return false;
         return true;
+    }
+    namespace fps_part{
+        bool limit_enter_custom_fpt_reg(float mx,float my){
+            if(mx < 205 || mx > 310 || my < 375 || my > 400)    return false;
+            return true;
+        }
+        bool limit_45_fps_button(float mx,float my){
+            if(mx < 180 || mx > 225 || my < 175 || my > 220)    return false;
+            return true;
+        }
+        bool limit_60_fps_button(float mx,float my){
+            if(mx < 285 || mx > 330 || my < 175 || my > 220)    return false;
+            return true;
+        }
+        bool limit_75_fps_button(float mx,float my){
+            if(mx < 175 || mx > 225 || my < 250 || my > 300)    return false;
+            return true;
+        }
+        bool limit_auto_fps_button(float mx,float my){
+            if(mx < 275 || mx > 340 || my < 260 || my > 300)    return false;
+            return true;
+        }
+        void draw(float mx,float my,sf::RenderWindow &windows){
+            //draw khung fps
+            sf::Sprite khung_so_fps1(tx_khung_so_fps1);
+            khung_so_fps1.scale(Vecf(0.1147959184f,0.1147959184f));
+            sf::Sprite khung_so_fps2(tx_khung_so_fps2);
+            khung_so_fps2.scale(Vecf(0.1147959184f,0.1147959184f));
+
+            khung_so_fps1.setPosition(Vecf(179,176));
+            khung_so_fps2.setPosition(Vecf(179,176));
+            if(fps_limit == 45) windows.draw(khung_so_fps2);
+            else    windows.draw(khung_so_fps1);
+
+            khung_so_fps1.setPosition(Vecf(287,176));
+            khung_so_fps2.setPosition(Vecf(287,176));
+            if(fps_limit == 60) windows.draw(khung_so_fps2);
+            else    windows.draw(khung_so_fps1);
+
+            khung_so_fps1.setPosition(Vecf(179,256));
+            khung_so_fps2.setPosition(Vecf(179,256));
+            if(fps_limit == 75) windows.draw(khung_so_fps2);
+            else    windows.draw(khung_so_fps1);
+
+            sf::Sprite khung_auto_fps1(tx_khung_auto_fps1),khung_auto_fps2(tx_khung_auto_fps2);
+            khung_auto_fps1.scale(Vecf(0.150462963f,0.2083333333f));
+            khung_auto_fps2.scale(Vecf(0.150462963f,0.2083333333f));
+            khung_auto_fps1.setPosition(Vecf(277,261));
+            khung_auto_fps2.setPosition(Vecf(277,261));
+            if(fps_limit == -1) windows.draw(khung_auto_fps2);
+            else    windows.draw(khung_auto_fps1);
+            //-------------------------------------------------------//
+            windows.draw(draw::text("45",Vecf(187,180),Agencyfb,32,sf::Color::White,""));
+            windows.draw(draw::text("60",Vecf(295,180),Agencyfb,32,sf::Color::White,""));
+            windows.draw(draw::text("75",Vecf(187,260),Agencyfb,32,sf::Color::White,""));
+            windows.draw(draw::text("auto",Vecf(285,258),Agencyfb,32,sf::Color::White,""));
+        }
+    }
+    namespace enter_name_part{
+        bool ok_enter = false;
+        bool limit_enter_name(float mx,float my){
+            if(mx < 442 || mx > 628 || my < 430 || my > 455)    return false;
+            return true;
+        }
+        void draw(sf::RenderWindow &windows){
+            windows.draw(draw::text(player1.name + (ok_enter ? "|" : ""),Vecf(448,429),Consolas,20,sf::Color::Black,""));
+        }
     }
     void process(sf::RenderWindow &windows){
         sf::RectangleShape overlay;
@@ -292,24 +386,39 @@ namespace setting{
         overlay.setFillColor(sf::Color(0,0,0,128));
         windows.draw(overlay);
 
-        //windows.draw(draw::reg(Vecf(125,93.75f),Vecf(675,506.25f),sf::Color::Red));
         sf::Sprite khung_setting(tx_khung_setting);
         khung_setting.setPosition(Vecf(125,93.75f));
         khung_setting.scale(Vecf(0.7189542484f,0.7161458333f));
         windows.draw(khung_setting);
 
-        //615 110
-        //660 155
-        //sz : 45
+
         Vecf rpos = windows.mapPixelToCoords(sf::Mouse::getPosition(windows),view);
         float mx = rpos.x;
         float my = rpos.y;
+        
+        if(limit_Nut_Exit(mx,my) || fps_part::limit_45_fps_button(mx,my) || fps_part::limit_60_fps_button(mx,my)
+        || fps_part::limit_75_fps_button(mx,my) || fps_part::limit_auto_fps_button(mx,my)){
+            windows.setMouseCursor(sf::Cursor(sf::Cursor::Type::Hand));
+        }
+        else if(fps_part::limit_enter_custom_fpt_reg(mx,my) || enter_name_part::limit_enter_name(mx,my)){
+            windows.setMouseCursor(sf::Cursor(sf::Cursor::Type::Text));
+        }
+        else    windows.setMouseCursor(sf::Cursor(sf::Cursor::Type::Arrow));
 
         sf::Sprite Nut_Exit(tx_Nut_Exit1);
-        if(limit_Nut_Exit(mx,my) == true)   Nut_Exit.setTexture(tx_Nut_Exit2);
+        if(limit_Nut_Exit(mx,my) == true){
+            Nut_Exit.setTexture(tx_Nut_Exit2);
+        }
         Nut_Exit.setPosition(Vecf(615,110));
         Nut_Exit.scale(Vecf(0.703125f,0.703125f));
         windows.draw(Nut_Exit);
+
+        fps_part::draw(mx,my,windows);
+        enter_name_part::draw(windows);
+    }
+}
+namespace single_play{
+    void process(sf::RenderWindow &windows){
 
     }
 }
@@ -325,18 +434,17 @@ void pre_process(){
 
     //thiết lập screen cha của id
     par[2] = 1;
+    par[3] = 1;
 }
 signed main()
 {
     sf::RenderWindow windows(sf::VideoMode({n, m}), "Ball-Game");
-    windows.setFramerateLimit(limit_frame);
-
+    windows.setFramerateLimit(fps_limit);
     view.setSize(sf::Vector2f(n,m));
     view.setCenter({n / 2.f,m / 2.f});
     windows.setView(view);
 
     pre_process();
-    
     while (windows.isOpen())
     {   
         
@@ -367,16 +475,58 @@ signed main()
                 if(id_screen == 1){
                     if(main_menu::limit_setting_button(mx,my) == true){
                         id_screen = 2;
+                        windows.setMouseCursor(sf::Cursor(sf::Cursor::Type::Arrow));
+                    }
+                    else if(main_menu::limit_single_button(mx,my) == true){
+                        id_screen = 3;
+                        windows.setMouseCursor(sf::Cursor(sf::Cursor::Type::Arrow));
                     }
                 }
                 else if(id_screen == 2){
                     if(setting::limit_Nut_Exit(mx,my) == true){
                         id_screen = par[id_screen];
+                        windows.setMouseCursor(sf::Cursor(sf::Cursor::Type::Arrow));
+                    }
+                    else if(setting::fps_part::limit_45_fps_button(mx,my) == true){
+                        fps_limit = 45;
+                        windows.setFramerateLimit(fps_limit);
+                    }
+                    else if(setting::fps_part::limit_60_fps_button(mx,my) == true){
+                        fps_limit = 60;
+                        windows.setFramerateLimit(fps_limit);
+                    }
+                    else if(setting::fps_part::limit_75_fps_button(mx,my) == true){
+                        fps_limit = 75;
+                        windows.setFramerateLimit(fps_limit);
+                    }
+                    else if(setting::fps_part::limit_auto_fps_button(mx,my) == true){
+                        fps_limit = -1;
+                        windows.setVerticalSyncEnabled(true);
+                    }
+
+                    if(setting::enter_name_part::limit_enter_name(mx,my) == true){
+                        setting::enter_name_part::ok_enter = true;
+                    }
+                    else if(setting::enter_name_part::ok_enter == true) setting::enter_name_part::ok_enter = false;
+                }
+            }
+            if(setting::enter_name_part::ok_enter){
+                if(const sf::Event::TextEntered *ex = event->getIf<sf::Event::TextEntered>()){
+                    auto code_char = ex->unicode;
+                    if(code_char == 8){
+                        if(player1.name.empty() == false)   player1.name.pop_back();
+                    }
+                    else if(code_char == 13){
+                        setting::enter_name_part::ok_enter = false;
+                    }
+                    else if(36 <= code_char && code_char <= 122){
+                        player1.name += static_cast<char>(code_char);
                     }
                 }
             }
 
         }
+        
         windows.clear(sf::Color::Black);
         windows.setView(view);
         
@@ -385,7 +535,12 @@ signed main()
             main_menu::process(windows);
             setting::process(windows);
         }
+        else if(id_screen == 3){
+            single_play::process(windows);
+        }
 
+        //windows.draw(draw::reg(Vecf(0,0),Vecf(160,600),sf::Color::Red));
+        //windows.draw(draw::reg(Vecf(640,0),Vecf(800,600),sf::Color::Red));//2 thanh chắn 2 bên
         windows.display();
     }
 }
