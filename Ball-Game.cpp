@@ -111,9 +111,9 @@ struct Ball{
     Vecf u;
     std::vector<pt_doan_t> lines;
     sf::Color Color_code;
+    sf::Time pret; // độ lệch thời gian so với thời điểm trc đó
     private:
         bool ok = false;
-        sf::Time pret; // độ lệch thời gian so với thời điểm trc đó
         void dieu_chinh_u(int id){
             Vecf n = sf::Vector2f(lines[id].B.y - lines[id].A.y, lines[id].A.x - lines[id].B.x);
             n = n / (float)len(n);
@@ -265,6 +265,24 @@ namespace main_menu{
         docu.setPosition(Vecf(333,495));
         windows.draw(docu);
     }
+    void iterative(const std::optional<sf::Event> &event,sf::RenderWindow &windows){
+        if(auto* mousePressed = event->getIf<sf::Event::MouseButtonPressed>()){
+            sf::Vector2i ppos = sf::Vector2i(mousePressed->position.x,mousePressed->position.y);
+            Vecf rpos = windows.mapPixelToCoords(ppos,view);
+            float mx = rpos.x;
+            float my = rpos.y; 
+            std::cout << mx << " " << my << std::endl;
+
+            if(main_menu::limit_setting_button(mx,my) == true){
+                id_screen = 2;
+                windows.setMouseCursor(sf::Cursor(sf::Cursor::Type::Arrow));
+            }
+            else if(main_menu::limit_single_button(mx,my) == true){
+                id_screen = 3;
+                windows.setMouseCursor(sf::Cursor(sf::Cursor::Type::Arrow));
+            }
+        }
+    }
     void process(sf::RenderWindow &windows){
         windows.draw(pic_main_menu.draw(Vecf(0.f,0.f)));
 
@@ -380,6 +398,61 @@ namespace setting{
             windows.draw(draw::text(player1.name + (ok_enter ? "|" : ""),Vecf(448,429),Consolas,20,sf::Color::Black,""));
         }
     }
+    void iterative(const std::optional<sf::Event> &event,sf::RenderWindow &windows){
+        if(const sf::Event::MouseButtonPressed *mousePressed = event->getIf<sf::Event::MouseButtonPressed>()){
+            sf::Vector2i ppos = sf::Vector2i(mousePressed->position.x,mousePressed->position.y);
+            Vecf rpos = windows.mapPixelToCoords(ppos,view);
+            float mx = rpos.x;
+            float my = rpos.y; 
+            std::cout << mx << " " << my << std::endl;
+            if(setting::limit_Nut_Exit(mx,my) == true){
+                id_screen = par[id_screen];
+                windows.setMouseCursor(sf::Cursor(sf::Cursor::Type::Arrow));
+            }
+            else if(setting::fps_part::limit_45_fps_button(mx,my) == true){
+                fps_limit = 45;
+                windows.setFramerateLimit(fps_limit);
+            }
+            else if(setting::fps_part::limit_60_fps_button(mx,my) == true){
+                fps_limit = 60;
+                windows.setFramerateLimit(fps_limit);
+            }
+            else if(setting::fps_part::limit_75_fps_button(mx,my) == true){
+                fps_limit = 75;
+                windows.setFramerateLimit(fps_limit);
+            }
+            else if(setting::fps_part::limit_auto_fps_button(mx,my) == true){
+                fps_limit = -1;
+                windows.setVerticalSyncEnabled(true);
+            }
+
+            if(setting::enter_name_part::limit_enter_name(mx,my) == true){
+                setting::enter_name_part::ok_enter = true;
+            }
+            else if(setting::enter_name_part::ok_enter == true) setting::enter_name_part::ok_enter = false;
+        }
+        else if(const sf::Event::KeyPressed *KeyPressed = event->getIf<sf::Event::KeyPressed>()){
+            if(KeyPressed->code == sf::Keyboard::Key::Escape){
+                id_screen = 1;
+            }
+        }
+        if(const sf::Event::TextEntered *ex = event->getIf<sf::Event::TextEntered>()){
+            int code_char = ex->unicode;
+            if(code_char == 8){
+                if(setting::enter_name_part::ok_enter == true){
+                    if(player1.name.empty() == false)   player1.name.pop_back();
+                }
+            }
+            else if(code_char == 13){
+                setting::enter_name_part::ok_enter = false;
+            }
+            else if(36 <= code_char && code_char <= 122){
+                if(setting::enter_name_part::ok_enter == true){
+                    player1.name += static_cast<char>(code_char);
+                }
+            }
+        }
+    }
     void process(sf::RenderWindow &windows){
         sf::RectangleShape overlay;
         overlay.setSize(Vecf(n,m));
@@ -418,8 +491,85 @@ namespace setting{
     }
 }
 namespace single_play{
-    void process(sf::RenderWindow &windows){
+    bool Paused_ok = false;
+    sf::Texture tx_Paused;
+    void pre_process(){
+        if(tx_Paused.loadFromFile("Texture/Single/Khung_Paused.png") == false){
+            exit(-1);
+        }
+    }
+    namespace Paused{
+        bool limit_Resume(float mx,float my){
+            if(mx < 315 || mx > 485 || my < 240 || my > 290) return false;
+            return true;
+        }
+        bool limit_mainmenu(float mx,float my){
+            if(mx < 315 || mx > 485 || my < 310 || my > 360)    return false;
+            return true;
+        }
+        void draw(float &mx,float &my,sf::RenderWindow &windows){
+            windows.draw(draw::reg(Vecf(0,0),Vecf(800,600),sf::Color(0,0,0,128)));
+            sf::Sprite Khung_Paused(tx_Paused);
+            Khung_Paused.scale(Vecf(0.5197505f,0.5199307f));
+            Khung_Paused.setPosition(Vecf(275,150));
+            windows.draw(Khung_Paused);
+            windows.draw(draw::text("Paused",Vecf(300,160),Agencyfb,55,sf::Color::White,""));
+            sf::Sprite Button(main_menu::tx_single_button);
+            Button.scale(Vecf(0.0827815f,0.0792393f));
+            Button.setPosition(Vecf(300,240));
+            windows.draw(Button);
+            Button.setPosition(Vecf(300,310));
+            windows.draw(Button);
+            Button.setPosition(Vecf(300,380));
+            windows.draw(Button);
 
+            windows.draw(draw::text("RESUME",Vecf(360,247),Agencyfb,30,(limit_Resume(mx,my) ? sf::Color(0,128,0) : sf::Color::Black),""));
+            windows.draw(draw::text("MAIN MENU",Vecf(345,317),Agencyfb,30,(limit_mainmenu(mx,my) ? sf::Color(0,128,0) : sf::Color::Black),""));
+            windows.draw(draw::text("UNKNOWS",Vecf(350,387),Agencyfb,30,sf::Color::Black,""));
+        }
+        void reset(){
+            Paused_ok = false;
+        }
+    }
+    void iterative(const std::optional<sf::Event> &event,sf::RenderWindow &windows){
+        if(const sf::Event::MouseButtonPressed *MousePressed = event->getIf<sf::Event::MouseButtonPressed>()){
+            sf::Vector2i ppos = sf::Vector2i(MousePressed->position.x,MousePressed->position.y);
+            Vecf rpos = windows.mapPixelToCoords(ppos,view);
+            float mx = rpos.x;
+            float my = rpos.y; 
+            std::cout << mx << " " << my << std::endl;
+            if(Paused_ok == true){
+                if(Paused::limit_Resume(mx,my) == true){
+                    Paused_ok = false;
+                }
+                else if(Paused::limit_mainmenu(mx,my) == true){
+                    for(int i = 0;i < 5;++i)    main_menu::menu_ball[i].pret = program_time.getElapsedTime();
+                    Paused::reset();
+                    id_screen = par[id_screen];
+                }
+            }
+        }
+        if(const sf::Event::KeyPressed *KeyPressed = event->getIf<sf::Event::KeyPressed>()){
+            if(KeyPressed->code == sf::Keyboard::Key::Escape){
+                Paused_ok = (Paused_ok ^ 1);
+            }
+        }
+    }
+    void process(sf::RenderWindow &windows){
+        windows.draw(main_menu::pic_main_menu.draw(Vecf(0.f,0.f)));
+        windows.draw(draw::reg(Vecf(0,0),Vecf(160,600),sf::Color::Red));
+        windows.draw(draw::reg(Vecf(640,0),Vecf(800,600),sf::Color::Red));//2 thanh chắn 2 bên
+        Vecf rpos = windows.mapPixelToCoords(sf::Mouse::getPosition(windows),view);
+        float mx = rpos.x;
+        float my = rpos.y;
+        if(Paused::limit_Resume(mx,my) || Paused::limit_mainmenu(mx,my)){
+            windows.setMouseCursor(sf::Cursor(sf::Cursor::Type::Hand));
+        }
+        else    windows.setMouseCursor(sf::Cursor(sf::Cursor::Type::Arrow));
+        if(Paused_ok == true){
+            Paused::draw(mx,my,windows);
+
+        }
     }
 }
 void pre_process(){
@@ -431,6 +581,7 @@ void pre_process(){
     }
     main_menu::pre_process();
     setting::pre_process();
+    single_play::pre_process();
 
     //thiết lập screen cha của id
     par[2] = 1;
@@ -445,6 +596,7 @@ signed main()
     windows.setView(view);
 
     pre_process();
+    
     while (windows.isOpen())
     {   
         
@@ -465,66 +617,9 @@ signed main()
                     view.setViewport(sf::FloatRect({0.f,(1.f - scale) / 2.f},{1.f,scale}));
                 }
             }
-            if(auto* mousePressed = event->getIf<sf::Event::MouseButtonPressed>()){
-                sf::Vector2i ppos = sf::Vector2i(mousePressed->position.x,mousePressed->position.y);
-                Vecf rpos = windows.mapPixelToCoords(ppos,view);
-                float mx = rpos.x;
-                float my = rpos.y; 
-                std::cout << mx << " " << my << std::endl;
-
-                if(id_screen == 1){
-                    if(main_menu::limit_setting_button(mx,my) == true){
-                        id_screen = 2;
-                        windows.setMouseCursor(sf::Cursor(sf::Cursor::Type::Arrow));
-                    }
-                    else if(main_menu::limit_single_button(mx,my) == true){
-                        id_screen = 3;
-                        windows.setMouseCursor(sf::Cursor(sf::Cursor::Type::Arrow));
-                    }
-                }
-                else if(id_screen == 2){
-                    if(setting::limit_Nut_Exit(mx,my) == true){
-                        id_screen = par[id_screen];
-                        windows.setMouseCursor(sf::Cursor(sf::Cursor::Type::Arrow));
-                    }
-                    else if(setting::fps_part::limit_45_fps_button(mx,my) == true){
-                        fps_limit = 45;
-                        windows.setFramerateLimit(fps_limit);
-                    }
-                    else if(setting::fps_part::limit_60_fps_button(mx,my) == true){
-                        fps_limit = 60;
-                        windows.setFramerateLimit(fps_limit);
-                    }
-                    else if(setting::fps_part::limit_75_fps_button(mx,my) == true){
-                        fps_limit = 75;
-                        windows.setFramerateLimit(fps_limit);
-                    }
-                    else if(setting::fps_part::limit_auto_fps_button(mx,my) == true){
-                        fps_limit = -1;
-                        windows.setVerticalSyncEnabled(true);
-                    }
-
-                    if(setting::enter_name_part::limit_enter_name(mx,my) == true){
-                        setting::enter_name_part::ok_enter = true;
-                    }
-                    else if(setting::enter_name_part::ok_enter == true) setting::enter_name_part::ok_enter = false;
-                }
-            }
-            if(setting::enter_name_part::ok_enter){
-                if(const sf::Event::TextEntered *ex = event->getIf<sf::Event::TextEntered>()){
-                    auto code_char = ex->unicode;
-                    if(code_char == 8){
-                        if(player1.name.empty() == false)   player1.name.pop_back();
-                    }
-                    else if(code_char == 13){
-                        setting::enter_name_part::ok_enter = false;
-                    }
-                    else if(36 <= code_char && code_char <= 122){
-                        player1.name += static_cast<char>(code_char);
-                    }
-                }
-            }
-
+            if(id_screen == 1)  main_menu::iterative(event,windows);
+            else if(id_screen == 2) setting::iterative(event,windows);
+            else if(id_screen == 3) single_play::iterative(event,windows);
         }
         
         windows.clear(sf::Color::Black);
@@ -539,8 +634,6 @@ signed main()
             single_play::process(windows);
         }
 
-        //windows.draw(draw::reg(Vecf(0,0),Vecf(160,600),sf::Color::Red));
-        //windows.draw(draw::reg(Vecf(640,0),Vecf(800,600),sf::Color::Red));//2 thanh chắn 2 bên
         windows.display();
     }
 }
