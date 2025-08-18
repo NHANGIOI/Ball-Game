@@ -20,6 +20,7 @@ const float INF = 1e9 + 7;
 const int N = 100;
 sf::Font Consolas, Agencyfb;
 sf::Clock program_time;
+float he_so_phan_xa = 1.0;
 namespace draw{
 sf::RectangleShape reg(Vecf A,Vecf B,sf::Color Color_code){
     sf::RectangleShape res;
@@ -75,6 +76,7 @@ struct Picture{
 struct pt_doan_t{
     Vecf A,B;
     float a,b,c;
+    bool pxtl = false;
     void cre(){
         a = (B - A).y;
         b = (A - B).x;
@@ -108,20 +110,26 @@ struct pt_doan_t{
 struct Ball{
     float x,y;
     float R;
-    Vecf u;
+    Vecf v;
     std::vector<pt_doan_t> lines;
     sf::Color Color_code;
     sf::Time pret; // độ lệch thời gian so với thời điểm trc đó
     private:
         bool ok = false;
         void dieu_chinh_u(int id){
-            Vecf n = sf::Vector2f(lines[id].B.y - lines[id].A.y, lines[id].A.x - lines[id].B.x);
+            Vecf AB = sf::Vector2f(lines[id].B.x - lines[id].A.x,lines[id].B.y - lines[id].A.y);
+            Vecf AI = sf::Vector2f(x - lines[id].A.x,y - lines[id].A.y);
+            Vecf n = sf::Vector2f(AB.y,-AB.x);
             n = n / (float)len(n);
-            u = u - 2.f * dot(u,n) * n;
+            if(lines[id].pxtl == true){
+                float tile = std::min(2.f * dot(AB,AI) / (float)dot(AB,AB),2.f * dot(-AB,AI) / (float)dot(AB,AB));
+                v = v - dot(v,n) * n - dot(v,n) * tile * n;
+            }
+            else    v = v - 2.f * dot(v,n) * n;
         }
         void reflex(){
             for(int i = 0;i < (int)lines.size();++i){
-                if((float)lines[i].khoang_cach(Vecf(x,y)) - (float)R > 0 || lines[i].huong_vao(x,y,u) == false){
+                if((float)lines[i].khoang_cach(Vecf(x,y)) - (float)R > 0 || lines[i].huong_vao(x,y,v) == false){
                     continue;
                 }
                 dieu_chinh_u(i);
@@ -136,8 +144,8 @@ struct Ball{
             }
             else{
                 reflex();
-                x += (float)((double)u.x * (double)(program_time.getElapsedTime() - pret).asMilliseconds() / 1000.0);  
-                y += (float)((double)u.y * (double)(program_time.getElapsedTime() - pret).asMilliseconds() / 1000.0);
+                x += (float)((double)v.x * (double)(program_time.getElapsedTime() - pret).asMilliseconds() / 1000.0);  
+                y += (float)((double)v.y * (double)(program_time.getElapsedTime() - pret).asMilliseconds() / 1000.0);
                 pret = program_time.getElapsedTime();
             }
             
@@ -148,6 +156,33 @@ struct Ball{
 };
 struct Player{
     std::string name;
+    int point = 0;
+    float x = 160,len = 200;
+    float y = 0;
+    int speed = 180;
+    sf::Keyboard::Key trai,phai;
+    sf::Time pret;
+    private:
+        bool ok = false;
+    public:
+        void enter_key_control(sf::Keyboard::Key lhs,sf::Keyboard::Key rhs){
+            trai = lhs;
+            phai = rhs;
+        }
+        void act(sf::Keyboard::Key inputs,int id_player,Ball &PlaysBall){
+            float delta = (float)((double)(program_time.getElapsedTime() - pret).asMilliseconds() / (double)1000.0);
+            if(inputs == trai)  x = std::max(160.f,x - (float)speed * delta) ;
+            else if(inputs == phai) x = std::min(640.f - len,x + (float)speed * delta) ;
+            PlaysBall.lines[id_player].A = sf::Vector2f(x,y);
+            PlaysBall.lines[id_player].B = sf::Vector2f(x + len,y);
+            PlaysBall.lines[id_player].cre();
+            pret = program_time.getElapsedTime();
+        }
+        void process(sf::RenderWindow &windows){
+            if(ok == false) pret = program_time.getElapsedTime();
+            windows.draw(draw::reg(Vecf(x,570),Vecf(x + len,600),sf::Color::White));
+        }
+
 };
 //---------------------------//
 unsigned int n = 800,m = 600;
@@ -187,7 +222,7 @@ namespace main_menu{
             menu_ball[i].x = rnd(0.f,(float)n);
             menu_ball[i].y = rnd(0.f,(float)m);
             menu_ball[i].R = rnd(10,20);
-            menu_ball[i].u = Vecf((float)(rnd(0,1) == 1 ? 1 : -1) * rnd(100,200),(float)(rnd(0,1) == 1 ? 1 : -1) * rnd(100,200));
+            menu_ball[i].v = Vecf((float)(rnd(0,1) == 1 ? 1 : -1) * rnd(100,200),(float)(rnd(0,1) == 1 ? 1 : -1) * rnd(100,200));
             menu_ball[i].Color_code = sf::Color(rnd(200,255),rnd(10,255),rnd(20,255));
             
             pt_doan_t tmp;
@@ -265,7 +300,7 @@ namespace main_menu{
         docu.setPosition(Vecf(333,495));
         windows.draw(docu);
     }
-    void iterative(const std::optional<sf::Event> &event,sf::RenderWindow &windows){
+    void interactive(const std::optional<sf::Event> &event,sf::RenderWindow &windows){
         if(auto* mousePressed = event->getIf<sf::Event::MouseButtonPressed>()){
             sf::Vector2i ppos = sf::Vector2i(mousePressed->position.x,mousePressed->position.y);
             Vecf rpos = windows.mapPixelToCoords(ppos,view);
@@ -398,7 +433,7 @@ namespace setting{
             windows.draw(draw::text(player1.name + (ok_enter ? "|" : ""),Vecf(448,429),Consolas,20,sf::Color::Black,""));
         }
     }
-    void iterative(const std::optional<sf::Event> &event,sf::RenderWindow &windows){
+    void interactive(const std::optional<sf::Event> &event,sf::RenderWindow &windows){
         if(const sf::Event::MouseButtonPressed *mousePressed = event->getIf<sf::Event::MouseButtonPressed>()){
             sf::Vector2i ppos = sf::Vector2i(mousePressed->position.x,mousePressed->position.y);
             Vecf rpos = windows.mapPixelToCoords(ppos,view);
@@ -493,10 +528,52 @@ namespace setting{
 namespace single_play{
     bool Paused_ok = false;
     sf::Texture tx_Paused;
+    Ball PlaysBall;
     void pre_process(){
         if(tx_Paused.loadFromFile("Texture/Single/Khung_Paused.png") == false){
             exit(-1);
         }
+        player1.trai = sf::Keyboard::Key::A;
+        player1.phai = sf::Keyboard::Key::D;
+        player1.y = 570.f;
+        
+        PlaysBall.x = 400.f;
+        PlaysBall.y = 300.f;
+        PlaysBall.R = 20.f;
+        PlaysBall.v = Vecf((float)(rnd(0,1) == 1 ? 1 : -1) * rnd(250,300),(float)(rnd(0,1) == 1 ? 1 : -1) * rnd(250,300));
+        PlaysBall.Color_code = sf::Color(255,180,0);
+        pt_doan_t tmp;
+        tmp.A = Vecf((float)player1.x,570.f);
+        tmp.B = Vecf((float)(player1.x + player1.len),570.f);
+        tmp.cre();
+        PlaysBall.lines.push_back(tmp);
+        //PlaysBall.lines[0].pxtl = true;
+
+        tmp.A = Vecf((float)player1.x,570.f);
+        tmp.B = Vecf((float)player1.x,600.f);
+        tmp.cre();
+        PlaysBall.lines.push_back(tmp);
+
+        tmp.A = Vecf((float)(player1.x + player1.len),570.f);
+        tmp.B = Vecf((float)(player1.x + player1.len),600.f);
+        tmp.cre();
+        PlaysBall.lines.push_back(tmp);
+
+        tmp.A = Vecf(160.f,0.f);
+        tmp.B = Vecf(160.f,600.f);
+        tmp.cre();
+        PlaysBall.lines.push_back(tmp);
+        
+        tmp.A = Vecf(640.f,0.f);
+        tmp.B = Vecf(640.f,600.f);
+        tmp.cre();
+        PlaysBall.lines.push_back(tmp);
+
+        tmp.A = Vecf(0.f,0.f);
+        tmp.B = Vecf(640.f,0.f);
+        tmp.cre();
+        PlaysBall.lines.push_back(tmp);
+
     }
     namespace Paused{
         bool limit_Resume(float mx,float my){
@@ -522,16 +599,16 @@ namespace single_play{
             windows.draw(Button);
             Button.setPosition(Vecf(300,380));
             windows.draw(Button);
-
             windows.draw(draw::text("RESUME",Vecf(360,247),Agencyfb,30,(limit_Resume(mx,my) ? sf::Color(0,128,0) : sf::Color::Black),""));
             windows.draw(draw::text("MAIN MENU",Vecf(345,317),Agencyfb,30,(limit_mainmenu(mx,my) ? sf::Color(0,128,0) : sf::Color::Black),""));
             windows.draw(draw::text("UNKNOWS",Vecf(350,387),Agencyfb,30,sf::Color::Black,""));
+
         }
         void reset(){
             Paused_ok = false;
         }
     }
-    void iterative(const std::optional<sf::Event> &event,sf::RenderWindow &windows){
+    void interactive(const std::optional<sf::Event> &event,sf::RenderWindow &windows){
         if(const sf::Event::MouseButtonPressed *MousePressed = event->getIf<sf::Event::MouseButtonPressed>()){
             sf::Vector2i ppos = sf::Vector2i(MousePressed->position.x,MousePressed->position.y);
             Vecf rpos = windows.mapPixelToCoords(ppos,view);
@@ -562,14 +639,26 @@ namespace single_play{
         Vecf rpos = windows.mapPixelToCoords(sf::Mouse::getPosition(windows),view);
         float mx = rpos.x;
         float my = rpos.y;
-        if(Paused::limit_Resume(mx,my) || Paused::limit_mainmenu(mx,my)){
+        /*if(){
+            windows.setMouseCursor(sf::Cursor(sf::Cursor::Type::Hand));
+        }
+        else    windows.setMouseCursor(sf::Cursor(sf::Cursor::Type::Arrow));*/
+        //player1 control
+        if(sf::Keyboard::isKeyPressed(sf::Keyboard::Key::A)){
+            player1.act(sf::Keyboard::Key::A,0,PlaysBall);
+        }
+        else if(sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D)){
+            player1.act(sf::Keyboard::Key::D,0,PlaysBall);
+        }
+        player1.process(windows);
+        PlaysBall.process(windows);
+
+        if(Paused_ok && (Paused::limit_Resume(mx,my) || Paused::limit_mainmenu(mx,my))){
             windows.setMouseCursor(sf::Cursor(sf::Cursor::Type::Hand));
         }
         else    windows.setMouseCursor(sf::Cursor(sf::Cursor::Type::Arrow));
-        if(Paused_ok == true){
-            Paused::draw(mx,my,windows);
+        if(Paused_ok == true)   Paused::draw(mx,my,windows);
 
-        }
     }
 }
 void pre_process(){
@@ -617,9 +706,9 @@ signed main()
                     view.setViewport(sf::FloatRect({0.f,(1.f - scale) / 2.f},{1.f,scale}));
                 }
             }
-            if(id_screen == 1)  main_menu::iterative(event,windows);
-            else if(id_screen == 2) setting::iterative(event,windows);
-            else if(id_screen == 3) single_play::iterative(event,windows);
+            if(id_screen == 1)  main_menu::interactive(event,windows);
+            else if(id_screen == 2) setting::interactive(event,windows);
+            else if(id_screen == 3) single_play::interactive(event,windows);
         }
         
         windows.clear(sf::Color::Black);
