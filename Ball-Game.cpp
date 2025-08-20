@@ -119,14 +119,14 @@ struct Ball{
         bool ok = false;
         void dieu_chinh_u(int id){
             Vecf AB = sf::Vector2f(lines[id].B.x - lines[id].A.x,lines[id].B.y - lines[id].A.y);
-            Vecf AI = sf::Vector2f(x - lines[id].A.x,y - lines[id].A.y);
             Vecf j = sf::Vector2f(AB.y,-AB.x) / len(sf::Vector2f(AB.y,-AB.x));
             if(lines[id].pxtl == true){
-                float tile = std::min(dot(AI,AB) / len(AB),len(AB) - (float)dot(AI,AB) / len(AB));
-                tile = tile / len(AB / 2.f);
-                tile = he_so_phan_xa * tile + hang_so_phan_xa;
-                Vecf v_ = v - (float)dot(v,j) * j - (float)tile * dot(v,j) * j;
-                v = v_ * ((float)len(v) / len(v_));
+                Vecf n = Vecf(0.f,y - lines[id].A.y);
+                n = n / len(n);
+                n = n * 115.470054f;
+                Vecf u = Vecf(x - (float)(lines[id].A.x + lines[id].B.x) / 2,0.f);
+                Vecf v_ = (n + u) / len(n + u);
+                v = v_ * len(v);
             }
             else    v = v - 2.f * dot(v,j) * j;
         }
@@ -172,8 +172,8 @@ struct Player{
             float delta = (float)((double)(program_time.getElapsedTime() - pret).asMilliseconds() / (double)1000.0);
             if(inputs == trai)  x = std::max(160.f,x - (float)speed * delta) ;
             else if(inputs == phai) x = std::min(640.f - len,x + (float)speed * delta) ;
-            PlaysBall.lines[id_player].A = sf::Vector2f(x,y);
-            PlaysBall.lines[id_player].B = sf::Vector2f(x + len,y);
+            PlaysBall.lines[id_player].A = sf::Vector2f(x,y + (id_player == 3 ? 25.f : 0));
+            PlaysBall.lines[id_player].B = sf::Vector2f(x + len,y + (id_player == 3 ? 25.f : 0));
             PlaysBall.lines[id_player].cre();
 
             PlaysBall.lines[id_player + 1].A = sf::Vector2f(x,y);
@@ -187,7 +187,7 @@ struct Player{
         }
         void process(sf::RenderWindow &windows){
             if(ok == false) pret = program_time.getElapsedTime();
-            windows.draw(draw::reg(Vecf(x,y),Vecf(x + len,600),sf::Color::White));
+            windows.draw(draw::reg(Vecf(x,y),Vecf(x + len,y + 25),sf::Color::White));
         }
 
 };
@@ -543,7 +543,11 @@ namespace single_play{
         player1.trai = sf::Keyboard::Key::A;
         player1.phai = sf::Keyboard::Key::D;
         player1.y = 575.f;
-        
+
+        player2.trai = sf::Keyboard::Key::Left;
+        player2.phai = sf::Keyboard::Key::Right;
+        player2.y = 0.f;
+
         PlaysBall.x = 400.f;
         PlaysBall.y = 300.f;
         PlaysBall.R = 20.f;
@@ -551,22 +555,40 @@ namespace single_play{
 
         PlaysBall.Color_code = sf::Color(255,180,0);
         pt_doan_t tmp;
-        tmp.A = Vecf((float)player1.x,570.f);
-        tmp.B = Vecf((float)(player1.x + player1.len),570.f);
+        //push thành phần player1
+        tmp.A = Vecf(player1.x,player1.y);
+        tmp.B = Vecf(player1.x + player1.len,player1.y);
         tmp.cre();
         PlaysBall.lines.push_back(tmp);
         PlaysBall.lines[0].pxtl = true;
 
-        tmp.A = Vecf((float)player1.x,player1.y);
-        tmp.B = Vecf((float)player1.x,player1.y + 25);
+        tmp.A = Vecf(player1.x,player1.y);
+        tmp.B = Vecf(player1.x,player1.y + 25);
         tmp.cre();
         PlaysBall.lines.push_back(tmp);
 
-        tmp.A = Vecf((float)(player1.x + player1.len),player1.y);
-        tmp.B = Vecf((float)(player1.x + player1.len),player1.y + 25);
+        tmp.A = Vecf(player1.x + player1.len,player1.y);
+        tmp.B = Vecf(player1.x + player1.len,player1.y + 25);
         tmp.cre();
         PlaysBall.lines.push_back(tmp);
 
+        //push thành phần player2
+        tmp.A = Vecf(player2.x,player2.y);
+        tmp.B = Vecf(player2.x + player2.len,player2.y);
+        tmp.cre();
+        PlaysBall.lines.push_back(tmp);
+        PlaysBall.lines[3].pxtl = true;
+
+        tmp.A = Vecf(player2.x,player2.y);
+        tmp.B = Vecf(player2.x,player2.y + 25);
+        tmp.cre();
+        PlaysBall.lines.push_back(tmp);
+
+        tmp.A = Vecf(player2.x + player2.len,player2.y);
+        tmp.B = Vecf(player2.x + player2.len,player2.y + 25.f);
+        tmp.cre();
+
+        PlaysBall.lines.push_back(tmp);
         tmp.A = Vecf(160.f,0.f);
         tmp.B = Vecf(160.f,600.f);
         tmp.cre();
@@ -574,11 +596,6 @@ namespace single_play{
         
         tmp.A = Vecf(640.f,0.f);
         tmp.B = Vecf(640.f,600.f);
-        tmp.cre();
-        PlaysBall.lines.push_back(tmp);
-
-        tmp.A = Vecf(0.f,0.f);
-        tmp.B = Vecf(640.f,0.f);
         tmp.cre();
         PlaysBall.lines.push_back(tmp);
 
@@ -646,6 +663,7 @@ namespace single_play{
             if(Paused_ok == true){
                 if(Paused::limit_Resume(mx,my) == true){
                     Paused_ok = false;
+                    PlaysBall.pret = program_time.getElapsedTime();
                 }
                 else if(Paused::limit_mainmenu(mx,my) == true){
                     for(int i = 0;i < 5;++i)    main_menu::menu_ball[i].pret = program_time.getElapsedTime();
@@ -657,6 +675,7 @@ namespace single_play{
         if(const sf::Event::KeyPressed *KeyPressed = event->getIf<sf::Event::KeyPressed>()){
             if(KeyPressed->code == sf::Keyboard::Key::Escape){
                 Paused_ok = (Paused_ok ^ 1);
+                PlaysBall.pret = program_time.getElapsedTime();
             }
         }
     }
@@ -668,22 +687,29 @@ namespace single_play{
         windows.draw(draw::text(std::to_string(player1.point),Vecf(680,300),Agencyfb,50,sf::Color::White,""));
         windows.draw(draw::text(player1.name,Vecf(680,200),Agencyfb,50,sf::Color::White,""));
 
+        windows.draw(draw::text(std::to_string(player2.point),Vecf(40,300),Agencyfb,50,sf::Color::White,""));
+        windows.draw(draw::text(player2.name,Vecf(40,200),Agencyfb,50,sf::Color::White,""));
+
         Vecf rpos = windows.mapPixelToCoords(sf::Mouse::getPosition(windows),view);
         float mx = rpos.x;
         float my = rpos.y;
         if(sf::Keyboard::isKeyPressed(sf::Keyboard::Key::A))    player1.act(sf::Keyboard::Key::A,0,PlaysBall);
         else if(sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D))   player1.act(sf::Keyboard::Key::D,0,PlaysBall);
         player1.process(windows);
-        
-        if(PlaysBall.y > (float)m + PlaysBall.R)    goal(windows,player2);
-        else if(PlaysBall.y < -PlaysBall.R) goal(windows,player1);
-        else    PlaysBall.process(windows);
+
+        if(sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Left))    player2.act(sf::Keyboard::Key::Left,3,PlaysBall);
+        else if(sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Right))   player2.act(sf::Keyboard::Key::Right,3,PlaysBall);
+        player2.process(windows);
 
         if(Paused_ok && (Paused::limit_Resume(mx,my) || Paused::limit_mainmenu(mx,my))){
             windows.setMouseCursor(sf::Cursor(sf::Cursor::Type::Hand));
         }
         else    windows.setMouseCursor(sf::Cursor(sf::Cursor::Type::Arrow));
-        if(Paused_ok == true)   Paused::draw(mx,my,windows);
+        if(Paused_ok == true)   return void(Paused::draw(mx,my,windows));
+
+        if(PlaysBall.y > (float)m + PlaysBall.R)    goal(windows,player2);
+        else if(PlaysBall.y < -PlaysBall.R) goal(windows,player1);
+        else    PlaysBall.process(windows);
     }
 }
 void pre_process(){
